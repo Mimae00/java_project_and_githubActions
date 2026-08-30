@@ -52,5 +52,5 @@ jobs:
       run: |
         docker compose up -d
         sleep 15
-        curl --fail http://localhost/actuator/health || (docker-compose logs && exit 1)
-        docker-compose down
+        curl --fail http://localhost/actuator/health || (docker compose logs && exit 1)
+        docker compose down
