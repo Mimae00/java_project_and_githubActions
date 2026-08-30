@@ -29,10 +29,20 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew build
 
-    - name: Build and Push Docker Image
+    - name: Build and Push App Docker Image
       uses: mr-smithers-excellent/docker-build-push@v7
       with:
         image: michael220701/demo-app-github-actions
+        registry: docker.io
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        tags: latest
+
+    - name: Build and Push Nginx Docker Image
+      uses: mr-smithers-excellent/docker-build-push@v7
+      with:
+        image: michael220701/my-nginx
+        dockerfile: Dockerfile.nginx
         registry: docker.io
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}

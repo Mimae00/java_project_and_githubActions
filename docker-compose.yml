@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  app:
+    image: michael220701/demo-app-github-actions:latest
+    expose:
+      - "8080"
+
+  nginx:
+    image: michael220701/my-nginx:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - app
