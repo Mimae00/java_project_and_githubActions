@@ -37,3 +37,10 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
         tags: latest
+
+    - name: Smoke test container
+      run: |
+        docker run -d -p 8080:8080 --name smoke-test michael220701/demo-app-github-actions:latest
+        sleep 10
+        curl --fail http://localhost:8080/actuator/health || (docker logs smoke-test && exit 1)
+        docker stop smoke-test
