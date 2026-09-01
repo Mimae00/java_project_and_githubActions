@@ -14,6 +14,13 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: michael220701/my-nginx:latest
+          image: nginx:alpine
           ports:
             - containerPort: 80
+          volumeMounts:
+            - name: nginx-config-volume
+              mountPath: /etc/nginx/conf.d
+      volumes:
+        - name: nginx-config-volume
+          configMap:
+            name: nginx-config
