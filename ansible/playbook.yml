@@ -1,0 +1,47 @@
+---
+- name: Configure app server and deploy containers
+  hosts: app_server
+  become: true
+  vars:
+    app_dir: /home/ec2-user/app
+
+  tasks:
+    - name: Install Docker
+      dnf:
+        name: docker
+        state: present
+
+    - name: Start and enable Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Add ec2-user to the docker group
+      user:
+        name: ec2-user
+        groups: docker
+        append: true
+
+    - name: Install Docker Compose plugin
+      dnf:
+        name: docker-compose-plugin
+        state: present
+
+    - name: Create app directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: ec2-user
+        mode: '0755'
+
+    - name: Copy docker-compose.yml to the server
+      copy:
+        src: ../docker-compose.yml
+        dest: "{{ app_dir }}/docker-compose.yml"
+        owner: ec2-user
+
+    - name: Pull images and start containers
+      command: docker compose up -d
+      args:
+        chdir: "{{ app_dir }}"
