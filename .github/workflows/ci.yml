@@ -51,6 +51,6 @@ jobs:
     - name: Smoke test with docker-compose
       run: |
         docker compose up -d
-        sleep 15
+        sleep 20
         curl --fail http://localhost/actuator/health || (docker compose logs && exit 1)
         docker compose down
