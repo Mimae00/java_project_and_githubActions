@@ -1,80 +1,130 @@
-Java Project with GitHub Actions, Terraform & Ansible
+# Java App with GitHub Actions, Docker, Kubernetes, Terraform & Ansible
 
-📌 Overview
-This repository demonstrates a Java application integrated with Docker, Terraform, and Ansible, with CI/CD automation via GitHub Actions. It showcases a complete DevOps pipeline:
+A Spring Boot Java application demonstrating a full DevOps pipeline: containerization, CI/CD automation, orchestration, infrastructure provisioning, and configuration management.
 
-	• Java app build & containerization
-	• Infrastructure provisioning with Terraform
-	• Configuration management with Ansible
-	• Automated workflows with GitHub Actions
-	
-🛠 Project Structure
+## Architecture
 
-	• src/ – Java source code
-	• build.gradle – Gradle build configuration
-	• Dockerfile – Java app container image
-	• docker-compose.yml – Multi-container setup (Java app + Nginx)
-	• terraform/ – Terraform IaC files
-	• ansible/ – Ansible playbooks and inventories
-	• .github/workflows/ – GitHub Actions CI/CD pipelines
-	
-🌐 Terraform – Infrastructure Provisioning
-The Terraform files define cloud infrastructure resources. Typical responsibilities:
+```
+                        ┌──────────────┐
+   Developer  ───push──▶│ GitHub Repo  │
+                        └──────┬───────┘
+                               │ triggers
+                        ┌──────▼───────┐
+                        │GitHub Actions│  build → test → docker build → push to Docker Hub
+                        └──────┬───────┘
+                               │
+              ┌────────────────┼────────────────┐
+              ▼                                  ▼
+     ┌─────────────────┐              ┌────────────────────┐
+     │ Docker Compose   │              │ Kubernetes (k8s/)   │
+     │ (local/demo)     │              │ deployment+service  │
+     └─────────────────┘              └────────────────────┘
 
-	• VPC & Networking – Create virtual networks, subnets, and security groups
-	• Compute Instances – Provision EC2 (AWS) or VM instances (Azure/GCP)
-	• Storage & Databases – Optionally configure S3 buckets, RDS, or equivalent
-	• Outputs – Expose IP addresses or DNS names for Ansible to connect
+     ┌─────────────────────────────────────────────────────┐
+     │ Terraform (terraform/) → provisions AWS EC2 + SG      │
+     │              │                                        │
+     │              ▼                                        │
+     │ Ansible (ansible/) → installs Docker, deploys app     │
+     └─────────────────────────────────────────────────────┘
+```
 
-Usage:
-bash
+## Tech Stack
 
+- **App:** Java (Spring Boot), Gradle
+- **Containerization:** Docker, Docker Compose
+- **Reverse Proxy:** Nginx
+- **CI/CD:** GitHub Actions
+- **Orchestration:** Kubernetes
+- **Infrastructure as Code:** Terraform (AWS)
+- **Configuration Management:** Ansible
+
+## Project Structure
+
+```
+.
+├── .github/workflows/     # CI/CD pipeline (build, test, docker build & push)
+├── src/                   # Application source code
+├── Dockerfile             # Builds the Java app image
+├── Dockerfile.nginx       # Builds the nginx reverse-proxy image
+├── docker-compose.yml     # Local/demo multi-container setup (app + nginx)
+├── nginx.conf             # Nginx config used in the docker-compose image
+├── k8s/                   # Kubernetes manifests
+│   ├── app-deployment.yaml
+│   ├── app-service.yaml
+│   ├── nginx-deployment.yaml
+│   ├── nginx-service.yaml
+│   ├── nginx-configmap.yaml
+│   └── ingress.yaml
+├── terraform/             # AWS infrastructure provisioning
+│   ├── provider.tf
+│   ├── ec2.tf
+│   ├── variables.tf
+│   └── outputs.tf
+└── ansible/                # Server configuration & app deployment
+    ├── ansible.cfg
+    ├── inventory.ini.example
+    └── playbook.yml
+```
+
+## CI/CD Pipeline (GitHub Actions)
+
+On every push, the pipeline:
+1. Builds and tests the Java app with Gradle
+2. Builds the Docker images (`app`, `nginx`)
+3. Runs a `docker compose up` smoke test
+4. Pushes images to Docker Hub
+
+## Running Locally with Docker Compose
+
+```bash
+docker compose up -d
+```
+The app is served through nginx on `http://localhost`. Nginx proxies requests to the `app` service internally on port 8080.
+
+## Deploying to Kubernetes
+
+```bash
+kubectl apply -f k8s/
+```
+This creates the app and nginx deployments/services, plus an ingress routing `petclinic.local` to the nginx service.
+
+## Provisioning Infrastructure with Terraform
+
+Terraform provisions a single AWS EC2 instance (free-tier `t2.micro`) with a security group allowing SSH (restricted to your IP) and HTTP (public).
+
+```bash
 cd terraform
 terraform init
-terraform plan
-terraform apply
+terraform apply -var="key_name=<your-aws-keypair-name>" -var="my_ip_cidr=<your-ip>/32"
+```
 
-⚙️ Ansible – Configuration Management
-The Ansible playbooks configure and deploy the Java app onto provisioned servers. Typical responsibilities:
+After apply, note the output:
+```bash
+terraform output instance_public_ip
+```
 
-	• Install Dependencies – Java runtime, Docker, Nginx, etc.
-	• Deploy Application – Copy JAR/Docker image to target servers
-	• Configure Services – Set up reverse proxy (Nginx), environment variables
-	• Ensure Idempotency – Re-running playbooks keeps servers in desired state
+## Configuring the Server with Ansible
 
-Example inventory (INI):
-ini
+Ansible takes the EC2 instance Terraform created and installs Docker, then deploys the app.
 
-[web]
-server1 ansible_host=1.2.3.4 ansible_user=ubuntu
+```bash
+cd ansible
+cp inventory.ini.example inventory.ini
+# edit inventory.ini: set the public IP from terraform output, and your SSH key path
 
-Run playbook:
-bash
+ansible-playbook playbook.yml
+```
 
-ansible-playbook -i inventory.ini playbook.yml
+The playbook:
+- Installs Docker and the Docker Compose plugin
+- Adds `ec2-user` to the `docker` group
+- Copies `docker-compose.yml` to the server
+- Runs `docker compose up -d` to pull and start the containers
 
-🔄 CI/CD with GitHub Actions
-Workflows include:
+Once complete, the app is reachable at `http://<instance_public_ip>`.
 
-	• Java Build – Gradle build/test
-	• Docker Build – Container image build & push
-	• Terraform Plan/Apply – Infrastructure provisioning checks
-	• Ansible Deploy – Automated configuration and app deployment
-	
-🚀 End-to-End Flow
+## Division of Responsibility
 
-	1. Developer pushes code → GitHub Actions triggers
-	2. Gradle builds Java app → Docker image created
-	3. Terraform provisions infra → servers ready
-	4. Ansible configures servers → app deployed behind Nginx
-	5. Smoke tests run → validate deployment
-	
-🤝 Contributing
-
-	1. Fork the repo
-	2. Create a branch (git checkout -b feature/my-feature)
-	3. Commit changes (git commit -m "Add feature")
-	4. Push (git push origin feature/my-feature)
-	5. Open a Pull Request
-📜 License
-Open-source under MIT License.
+- **Terraform** answers *"what infrastructure exists?"* — the EC2 instance, networking, security group.
+- **Ansible** answers *"what's installed and running on it?"* — Docker, containers, app configuration.
+- **Kubernetes** manifests are an alternative orchestration path for environments with a cluster already available (e.g. EKS, minikube), rather than a single EC2 host.
